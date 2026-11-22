@@ -1,16 +1,27 @@
 #!/bin/bash
 
+verifica_ip() {
+    local dominio="$1"
+    local ip="$2"
+    local dns="$3"
+
+    ips=$(nslookup "$dominio" "$dns" 2>/dev/null | awk '
+        /^Name:/ {gasit=1; next}
+        gasit && /^Address:/ {print $2}
+    ')
+
+    if ! grep -Fxq "$ip" <<< "$ips"; then
+        echo "Bogus IP for $dominio in /etc/hosts!"
+    fi
+}
+
 cat /etc/hosts | while read -r ip nume
 do
     if [[ -z "$ip" || "$ip" == \#* ]]; then
         continue
     fi
 
-    if [[ "$ip" == *:* ]]; then
-        continue
-    fi
-
-    if [[ "$ip" == 127.* ]]; then
+    if [[ "$ip" == *:* || "$ip" == 127.* ]]; then
         continue
     fi
 
@@ -20,12 +31,6 @@ do
             break
         fi
 
-        ips=$(nslookup "$domeniu" 8.8.8.8 2>/dev/null | awk '
-            /^Name:/ {gasit=1; next}
-            gasit && /^Address:/ {print $2}')
-
-        if ! grep -Fxq "$ip" <<< "$ips"; then
-            echo "Bogus IP for $domeniu in /etc/hosts!"
-        fi
+        verifica_ip "$domeniu" "$ip" "8.8.8.8"
     done
 done
